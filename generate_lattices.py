@@ -162,8 +162,8 @@ def plot_lattice(points, filename, vectors=None):
     plt.close()
 
 def rot_matrix(miller_indices, rot_axis):
-    print(f'Rotating {miller_indices} to align with axis {rot_axis}')
-    u = miller_indices
+    print(f'Rotating {miller_indices.astype(np.int64)} to align with axis {rot_axis.astype(np.int64)}')
+    u = miller_indices.copy()
     u /= np.linalg.norm(u)
     rot_axis /= np.linalg.norm(rot_axis)
     # Compute angle of rotation
@@ -203,7 +203,7 @@ def rotate_lattice(points, direction, align_axis):
     return points
 
 def generate_lattice(lattice_vectors, rep_x, rep_y, rep_z):
-    print(lattice_vectors)
+    #print(lattice_vectors)
     a1 = lattice_vectors[0,:]
     a2 = lattice_vectors[1,:]
     a3 = lattice_vectors[2,:]
@@ -249,46 +249,50 @@ def in_plane_vectors_original_basis(lattice, plane, miller_indices, rot_axis):
     return return_2d_vectors(shortest_vectors)
 
 def calculate_in_plane_vectors(lat, a, b, c, alpha, beta, gamma, prefix):
-    rep_x = rep_y = rep_z = 3
+    rep_x = rep_y = rep_z = 4
     z_axis = np.array([0,0,1], dtype=np.float64)
 
     (basis_vectors, symmetry_directions) = get_basis_vectors(lat, a, b, c, alpha, beta, gamma)
     lattice = generate_lattice(basis_vectors, rep_x, rep_y, rep_z)
     image_file = prefix + "unrotated_lattice.pdf"
     plot_lattice(lattice, image_file, vectors=None)
-
+    #print(f"For lattice {lat} I got the following basis vectors\n {basis_vectors}")
     for i, _ in enumerate(symmetry_directions):
         print(f"Generating in-plane nearest neighbour vectors for lattice {lat} with plane defined by high-symmetry direction {symmetry_directions[i].astype(np.int64)}\n")
-        axis = symmetry_directions[i]
-        axis_string = str(int(axis[0] * 100 + axis[1]*10 + axis[0]*1))
+        axis_string = f'{int(symmetry_directions[i][0])}{int(symmetry_directions[i][1])}{int(symmetry_directions[i][2])}'
         
         #print(f"Axis = {axis}, aligning to {z_axis}")
         # Rotate the lattice so that the given symmetry direction is aligned along 
         # the vertical axis of the figure
-        if np.array_equal(axis, z_axis):
+        if np.array_equal(symmetry_directions[i], z_axis):
             #print("Axes are already aligned; skipping this symmetry.\n")
             z0_plane = select_atoms_by_plane(lattice, z=0)
         else:
-            rotated_lattice = rotate_lattice(lattice, axis, z_axis)
+            rotated_lattice = rotate_lattice(lattice, symmetry_directions[i], z_axis)
             # Select all lattice points (atoms) that lie in the plane z = 0
             z0_plane = select_atoms_by_plane(rotated_lattice, z=0)
         
         # Sort these vectors by length and isolate the N shortest ones.
         sorted_vectors = sort_by_distance(z0_plane, 0.0, 0.0)
-        print(sorted_vectors)
+        #print(sorted_vectors.shape)
+        #print(sorted_vectors)
         min_length = np.linalg.norm(sorted_vectors[1,:])
+        print(min_length)
         shortest_vectors = []
         for vec in sorted_vectors:
+            print(f"(x,y,z) = ({vec[0]:.4f}, {vec[1]:.4f}, {vec[2]:.4f}); r = {np.sqrt(vec[0]**2 + vec[1]**2 + vec[2]**2)}")
             if np.isclose(np.linalg.norm(vec), min_length):
                 shortest_vectors.append(vec)
         shortest_vectors = np.array(shortest_vectors)
+        print(shortest_vectors.shape)
         # Again check if the symmetry axis is already along z.
-        if np.array_equal(axis, z_axis):
+        if np.array_equal(symmetry_directions[i], z_axis):
             #print("Axes are already aligned; skipping this symmetry.\n")
             shortest_vectors_rot = shortest_vectors
         else:
             # Return to the original coordinate system
-            shortest_vectors_rot = rotate_lattice(shortest_vectors, z_axis, axis)
+            #print(axis)
+            shortest_vectors_rot = rotate_lattice(shortest_vectors, z_axis, symmetry_directions[i])
 
         # Plot lattice projection and save image
         image_file = prefix + f"{axis_string}_lattice.pdf"
@@ -308,7 +312,9 @@ alpha = np.pi/4
 beta = np.pi/3
 gamma = np.pi/6
 
-lattice_types = ["cP", "cI", "cF", "tP", "tI", "oP", "oS", "oI", "oF", "hP", "hR", "mP", "mS"]
+#lattice_types = ["cP", "cI", "cF", "tP", "tI", "oP", "oS", "oI", "oF", "hP", "hR", "mP", "mS"]
+lattice_types = ["cP", "cI", "cF"]
+
 
 for lat in lattice_types:
     prefix = f"nn_data_{lat}/"
@@ -337,7 +343,7 @@ def main(lattice_type, alignment, a, b, c, alpha, beta, gamma, theta, filename):
     for vec in sorted_vectors:
         if np.isclose(np.linalg.norm(vec), min_length):
             shortest_vectors.append(vec)
-            print(f"(x,y,z) = ({vec[0]:.4f}, {vec[1]:.4f}, {vec[2]:.4f})")
+            print(f"(x,y,z) = ({vec[0]:.4f}, {vec[1]:.4f}, {vec[2]:.4f}); r = {np.sqrt(vec[0]**2 + vec[1]**2 + vec[2]**2)}")
     shortest_vectors = np.array(shortest_vectors)
     print(f"Found {shortest_vectors.shape[0]} nearest neighbours for {lattice_type} lattice in [{alignment[0]}{alignment[1]}{alignment[2]}] plane.\n")
 
