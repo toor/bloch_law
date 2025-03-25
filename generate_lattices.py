@@ -279,6 +279,26 @@ lattice_vectors = np.array([a1, a2, a3])
 target_ax = np.array([1,1,1])
 original_ax = np.array([0,0,1])
 
+rotated_basis = rotate_lattice(lattice_vectors, target_ax, original_ax)
+lattice_points = generate_lattice(rotated_basis, rep_x, rep_y, rep_z)
+
+z0_plane = select_atoms_by_plane(lattice_points, z=0)
+sorted_vectors = sort_by_distance(z0_plane, 0.0, 0.0)
+
+# The first element of this list will be the origin, which 
+# naturally has r = 0. Therefore, we select the next-shortest
+# vector.
+min_length = np.linalg.norm(sorted_vectors[1,:])
+shortest_vectors = []
+
+for vec in sorted_vectors:
+    if np.isclose(np.linalg.norm(vec), min_length):
+        shortest_vectors.append(vec)
+shortest_vectors = np.array(shortest_vectors)
+filename = "rotate_first.png"
+plot_lattice(z0_plane, filename, vectors=shortest_vectors)
+sys.exit(0)
+
 
 # Generate a lattice and rotate it such that the z axis in the 
 # figure is aligned with a particular crystallographic direction
