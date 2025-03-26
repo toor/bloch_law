@@ -88,18 +88,55 @@ class Lattice:
         for basis in self.bases:
             (s,b) = basis 
             # Compare label for basis
-            if s == sym_dir:
+            if np.char.equal(s, sym_dir):
                 return b
 
+    def new_lattice(self, sym_dir, reps):
+        basis = self.search_for_basis(sym_dir)
+        a1 = basis[0,:]
+        a2 = basis[1,:]
+        a3 = basis[2,:]
+
+        points = []
+        for n1 in range(-reps, reps+1):
+            for n2 in range(-reps, reps+1):
+                for n3 in range(-reps, reps+1):
+                    vec = n1*a2 + n2*a2 + n3*a3
+                    points.append(vec)
+        return np.array(points)
+
+    def select_atoms_by_plane(self, lattice, z):
+        plane = []
+        for p in lattice:
+            if np.isclose(p[2], z):
+                plane.append(p)
+        return np.array(p)
+
+    def sort_by_distance(self, points, x, y, z):
+        origin = np.array([x,y,z])
+        return np.array(sorted(points, key = lambda p: np.linalg.norm(p - origin)))
+    
+    def return_vectors_by_length(self, vectors, length):
+        points = []
+        for vec in vectors:
+            if np.isclose(np.linalg.norm(vec), length):
+                points.append(vec)
+        return np.array(points)
                
     def sym_dir_to_string(sym_dir):
         sym_dir = sym_dir.astype(np.int64)
 
         return f'{sym_dir[0]}{sym_dir[1]}{sym_dir[2]}'
 
+    def rotate_vectors(self, vectors, final_axis):
+        R = self.rot_matrix(final_axis)
 
+        for vec in vectors:
+            new_vec = R @ vec 
+            vec = new_vec
+        return vectors
     
-    def rot_matrix(final_axis):
+    def rot_matrix(self, final_axis):
         #print(f'Rotating {miller_indices.astype(np.int64)} to align with axis {rot_axis.astype(np.int64)}')
         u = final_axis.copy().astype(np.float64)
         u /= np.linalg.norm(u)
@@ -121,10 +158,26 @@ class Lattice:
 
         R = np.eye(3) + np.sin(theta)*r_shear + (1- np.cos(theta))*r_shear2
 
-        return R
+        return R 
+
+    def in_plane_nearest_neighbours(self, reps):
+        nn = []
+        for basis in self.bases:
+            (s, b) = basis
+            points = self.new_lattice(s, reps)
+            # Select all atoms which lie in the plane z = 0, and sort these 
+            # by distance to the origin.
+            z = 0
+            x = y = 0
+            # Remove first element; this will be the origin itself.
+            z0_plane = self.sort_by_distance(self.select_atoms_by_plane(points, z), x, y, z)[1:]
+            min_length = np.linalg.norm(z0_plane[0,:])
+
+            nn_vectors = self.return_vectors_by_length(z0_plane, min_length)
+            nn.append((s, nn_vectors))
+            
+            
 
 
-    def select_atoms_by_plane(self, plane):
-        for vec in self.vectors
 
 
