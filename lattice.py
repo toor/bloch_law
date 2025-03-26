@@ -71,7 +71,7 @@ class Basis:
 
 
 class Lattice:
-    def __init__(self, lattice_type, params, reps):
+    def __init__(self, lattice_type, params):
         basis = Basis(lattice_type, params)
         num_bases = basis.sym_dirs.shape[0]
         #self.bases = np.zeros((num_bases, 3, 3))
@@ -79,9 +79,24 @@ class Lattice:
         bases = []
         for i, sym_dir in enumerate(basis.sym_dirs):
             rotated_basis = self.rotate_vectors(basis.basis, sym_dir)
-            bases.append(rotated_basis)
-            
-        
+            bases.append((self.sym_dir_to_string(sym_dir), rotated_basis))
+        bases = np.array(bases)
+        self.bases = bases
+
+
+    def search_for_basis(self, sym_dir):
+        for basis in self.bases:
+            (s,b) = basis 
+            # Compare label for basis
+            if s == sym_dir:
+                return b
+
+               
+    def sym_dir_to_string(sym_dir):
+        sym_dir = sym_dir.astype(np.int64)
+
+        return f'{sym_dir[0]}{sym_dir[1]}{sym_dir[2]}'
+
 
     
     def rot_matrix(final_axis):
