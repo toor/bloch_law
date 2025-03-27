@@ -1,1 +1,5 @@
+test.py
 *.png
+nn_*/
+.DS_Store 
+__pycache__/
