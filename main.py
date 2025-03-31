@@ -14,26 +14,31 @@ params = {
 }
 
 prefix = os.getcwd()
+print(prefix)
 
 
-lattice_types = ["cP", "cI", "cF", "tP", "tI", "oP", "oS", "oI", "oF", "hP", "hR", "mP", "mS"]
+lattice_types = ["cP", "cI", "cF", "tP", "tI", "oP", "oS", "oI", "oF", "hP", "mP", "mS"] #"hR", "mP", "mS"]
+#lattice_types = ["cF"]
+#lattice_types = ["hR"]
 
 for lattice_type in lattice_types:
-    params = lat.Params(params)
-    lattice = lat.Lattice(lattice_type, params)
+    #print(lattice_type)
+    p = lat.Params(params)
+    lattice = lat.Lattice(lattice_type, p)
     
     # repeat the lattice three times along each basis vector.
-    nearest_neighbours = lattice.in_plane_nearest_neighbours(3)
+    nearest_neighbours = lattice.in_plane_nearest_neighbours(3, plot_image=True, prefix=prefix)
     
     for s, nns in nearest_neighbours.items():
-        data_dir = prefix + f"nn_{lattice_type}/"
+        data_dir = prefix + f"/nn_{lattice_type}/{s}/"
+        #print(data_dir)
         os.makedirs(data_dir, exist_ok=True)
-        filename = prefix + f"{s}__nn.dat"
-        
+        filename = data_dir + f"{s}__nn.dat"
+
         with open(filename, "w") as f:
             f.write('idx    n1    n2    n3\n')
             for i, nn in enumerate(nns):
-                coeffs = lattice.nearest_neighbours_original_basis(nn)
+                coeffs = lattice.nearest_neighbours_original_basis(s, nn)
                 f.write(f'{i}    {coeffs[0]}    {coeffs[1]}    {coeffs[2]}\n')
             f.close()
         
