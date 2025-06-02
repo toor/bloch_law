@@ -16,9 +16,7 @@ params = {
 prefix = os.getcwd()
 print(prefix)
 
-#lattice_types = ["cP", "cI", "cF", "tP", "tI", "oP", "oS", "oI", "oF", "hP", "mP", "mS"] #"hR", "mP", "mS"]
-lattice_types = ["cF"]
-#lattice_types = ["hR"]
+lattice_types = ["cP", "cI", "cF"]
 
 for lattice_type in lattice_types:
     print(f"Lattice with type {lattice_type}")

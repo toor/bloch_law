@@ -33,39 +33,39 @@ class Basis:
             case "cF":
                 self.basis = (a/2)*np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]], dtype=np.float64)
                 self.sym_dirs = np.array([[1,0,0], [0,1,0],[1,1,0], [1,1,1]], dtype=np.float64)
-            case "tP":
-                self.basis = np.array([[a, 0, 0], [0, a, 0], [0, 0, c]], dtype=np.float64)
-                self.sym_dirs = np.array([[1,0,0], [0,1,0],  [1,1,0]], dtype=np.float64)
-            case "tI":
-                self.basis = np.array([[a, -a, c], [a, a, c], [-a, -a, c]], dtype=np.float64) / 2
-                self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0], [1,1,1]], dtype=np.float64)
-            case "oP":
-                self.basis = np.array([[a, 0, 0], [0, b, 0], [0, 0, c]], dtype=np.float64)
-                self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0], [0,1,1]], dtype=np.float64)
-            case "oS":
-                self.basis = np.array([[a/2, b/2, 0], [-a/2, b/2, 0], [0, 0, c]], dtype=np.float64)
-                self.sym_dirs = np.array([[1,0,0], [0,1,0],  [1,1,0], [0,1,1]], dtype=np.float64) 
-            case "oI":
-                self.basis = np.array([[a, b, c], [-a, b, c], [a, -b, c]], dtype=np.float64) / 2
-                self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0], [1,1,1]], dtype=np.float64)
-            case "oF":
-                self.basis = np.array([[0, b, c], [a, 0, c], [a, b, 0]], dtype=np.float64) / 2
-                self.sym_dirs = np.array([[1,0,0], [0,1,0],  [1,1,0], [0,1,1]], dtype=np.float64)
-            case "hP":
-                self.basis = np.array([[a, 0, 0], [-a/2, a*np.sqrt(3)/2, 0], [0, 0, c]], dtype=np.float64)
-                self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0]], dtype=np.float64)
-            case "hR":
-                self.basis = self.__gen_rhombohedral(a, alpha)
-                self.sym_dirs = np.array([[1,1,1], [1,1,0]], dtype=np.float64)
-            case "mP":
-                self.basis = np.array([[a, 0, 0], [0, b, 0], [c*np.cos(beta), 0, c*np.sin(beta)]], dtype=np.float64)
-                self.sym_dirs = np.array([[1,0,0], [0,1,0]], dtype=np.float64)
-            case "mS":
-                self.basis = np.array([[a/2, b/2, 0], [-a/2, b/2, 0], [c*np.cos(beta), 0, c*np.sin(beta)]], dtype=np.float64)
-                self.sym_dirs = np.array([[1,0,0], [0,1,0]], dtype=np.float64)
-            case "aP":
-                self.basis = self.__gen_triclinic(a, b, c, alpha, beta, gamma)
-                self.sym_dirs = None
+                # case "tP":
+                #     self.basis = np.array([[a, 0, 0], [0, a, 0], [0, 0, c]], dtype=np.float64)
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0],  [1,1,0]], dtype=np.float64)
+                # case "tI":
+                #     self.basis = np.array([[a, -a, c], [a, a, c], [-a, -a, c]], dtype=np.float64) / 2
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0], [1,1,1]], dtype=np.float64)
+                # case "oP":
+                #     self.basis = np.array([[a, 0, 0], [0, b, 0], [0, 0, c]], dtype=np.float64)
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0], [0,1,1]], dtype=np.float64)
+                # case "oS":
+                #     self.basis = np.array([[a/2, b/2, 0], [-a/2, b/2, 0], [0, 0, c]], dtype=np.float64)
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0],  [1,1,0], [0,1,1]], dtype=np.float64) 
+                # case "oI":
+                #     self.basis = np.array([[a, b, c], [-a, b, c], [a, -b, c]], dtype=np.float64) / 2
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0], [1,1,1]], dtype=np.float64)
+                # case "oF":
+                #     self.basis = np.array([[0, b, c], [a, 0, c], [a, b, 0]], dtype=np.float64) / 2
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0],  [1,1,0], [0,1,1]], dtype=np.float64)
+                # case "hP":
+                #     self.basis = np.array([[a, 0, 0], [-a/2, a*np.sqrt(3)/2, 0], [0, 0, c]], dtype=np.float64)
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0], [1,1,0]], dtype=np.float64)
+                # case "hR":
+                #     self.basis = self.__gen_rhombohedral(a, alpha)
+                #     self.sym_dirs = np.array([[1,1,1], [1,1,0]], dtype=np.float64)
+                # case "mP":
+                #     self.basis = np.array([[a, 0, 0], [0, b, 0], [c*np.cos(beta), 0, c*np.sin(beta)]], dtype=np.float64)
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0]], dtype=np.float64)
+                # case "mS":
+                #     self.basis = np.array([[a/2, b/2, 0], [-a/2, b/2, 0], [c*np.cos(beta), 0, c*np.sin(beta)]], dtype=np.float64)
+                #     self.sym_dirs = np.array([[1,0,0], [0,1,0]], dtype=np.float64)
+                # case "aP":
+                #     self.basis = self.__gen_triclinic(a, b, c, alpha, beta, gamma)
+                #     self.sym_dirs = None
     
     def __gen_rhombohedral(self, a, alpha):
         a1 = [1,0,0]
