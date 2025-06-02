@@ -229,7 +229,7 @@ class Lattice:
         ax.set_xticks(ticks=[0.0, 1.0, -1.0], labels=['x=0', '1', '-1'])
         ax.set_yticks(ticks=[0.0, 1.0, -1.0], labels=['y=0', '1', '-1'])
         ax.set_zticks(ticks=[0.0, 1.0, -1.0], labels=['z=0', '1', '-1'])
-        plt.show()
+        #plt.show()
 
         fig.savefig(filename)
         plt.close()
@@ -324,7 +324,8 @@ class Lattice:
             print_r_text(f"(x,y,z) = ({vector[0]:.4f}, {vector[1]:.4f}, {vector[2]:.4f})\n")
         else:
             print(f"(x,y,z) = ({vector[0]:.4f}, {vector[1]:.4f}, {vector[2]:.4f})\n")
-    
+    def as_integer_tuple(self, vector):
+        return np.array([int(round(vector[0])), int(round(vector[1])), int(round(vector[2]))])
 
     # For every nn_vector v_i, we have v_i = M (n1, n2, n3)^T, 
     # where n1, n2 and n3 are integer coefficients of the basis vectors, 
@@ -333,27 +334,28 @@ class Lattice:
     def nearest_neighbours_original_basis(self, sym_dir, vector):
         #print(f"Computing integer coefficients of nearest neighbours for lattice {self.ltype} with symmetry direction {sym_dir}")
         basis = self.original_basis 
-        a1 = basis[0,:]#.reshape((3,1))
-        a2 = basis[1,:]#.reshape((3,1))
-        a3 = basis[2,:]#.reshape((3,1))
+        a1 = basis[0,:].reshape((3,))
+        a2 = basis[1,:].reshape((3,))
+        a3 = basis[2,:].reshape((3,))
 
         A = np.column_stack((a1,a2,a3))
         #print(A)
         R = self.rot_matrix(self.string_to_sym_dir(sym_dir), inverse=True)
-        print(f'R shape = {R.shape}')
+        #print(f'R shape = {R.shape}')
 
         A_inv = np.linalg.inv(A)
-        print("Matrix to compute basis coefficients is: \n")
-        print(A_inv)
+        #print("Matrix to compute basis coefficients is: \n")
+        #print(A_inv)
         #print("Vector to be rotated:\n")
-        self.print_vector(vector)
+        #self.print_vector(vector)
         #print("Rotation of vector:\n")
-        self.print_vector(R @ vector, True)
         rot_vector = R @ vector
-        print(f'rotated vector shape = {rot_vector.shape}')
+        #self.print_vector(rot_vector)
+        #print(f'rotated vector shape = {rot_vector.shape}')
         # first return the vector to the original basis, then compute it 
         # in terms of integer coefficients of the original basis vectors.
         v =  A_inv @ rot_vector 
-        return v.astype(np.int64)
+        #self.print_vector(v)
+        return self.as_integer_tuple(v)
 
 
