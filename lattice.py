@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 ATOL = 1e-6
 np.set_printoptions(threshold=np.inf)
 
+def print_r_text(input):
+    print('\x1b[1;31;40m' + input + '\x1b[0m')
+
 
 class Params:
     def __init__(self, params):
@@ -90,12 +93,15 @@ class Lattice:
             print(f"Caught an AttributeError {e} in Lattice() with lattice type {lattice_type}")
         #self.bases = np.zeros((num_bases, 3, 3))
         self.original_basis = basis.basis
+        self.params = params 
 
         bases = {}
         for i, sym_dir in enumerate(basis.sym_dirs):
+            print(sym_dir)
             rotated_basis = self.rotate_vectors(basis.basis, sym_dir)
             dict_i = {self.sym_dir_to_string(sym_dir): rotated_basis}
             bases.update(dict_i)
+
         self.bases = bases
         self.ltype = lattice_type
     
@@ -104,15 +110,6 @@ class Lattice:
         a1 = basis[0,:]
         a2 = basis[1,:]
         a3 = basis[2,:]
-        # print(f"Original basis for lattice {self.ltype} is: ")
-        # print(f'a1 = {self.original_basis[0,:]}')
-        # print(f'a2 = {self.original_basis[1,:]}')
-        # print(f'a3 = {self.original_basis[2,:]}')
-        # 
-        # print(f'Rotated basis for symmetry direction {sym_dir} is: ')
-        # print(f'a1 = {a1}')
-        # print(f'a2 = {a2}')
-        # print(f'a3 = {a3}')
         
         points = []
 
@@ -154,6 +151,23 @@ class Lattice:
             sym_dir.append(float(int(c)))
         return np.array(sym_dir, dtype=np.float64)
 
+    # Note to self: retur
+    def calculate_interplanar_spacing(self, s):
+        chars = [c for c in s]
+        h = int(chars[0])
+        k = int(chars[1])
+        l = int(chars[2])
+
+        lat_fam = [c for c in self.ltype][0]
+        match lat_fam:
+            case "c":
+                return self.params.a / np.sqrt(h**2 + k**2 + l**2)
+            case "t":
+                return 1 / np.sqrt((h**2 + k**2)/(self.params.a**2) + (self.params.c**2)/(l**2))
+            case "o":
+                return 1 / np.sqrt((h/self.params.a)**2 + (k/self.params.b)**2 + (l/self.params.c)**2)
+            case "h":
+                return 1 / np.sqrt(4*(h**2 + h*k + k**2)/(3*(self.params.a**2)) + (l/self.params.c)**2)
 
     def rotate_vectors(self, vectors, final_axis):
         R = self.rot_matrix(final_axis)
@@ -165,7 +179,14 @@ class Lattice:
         return np.array(new_vectors)
     
     def rot_matrix(self, final_axis, inverse=False):
-        #print(f'Rotating {miller_indices.astype(np.int64)} to align with axis {rot_axis.astype(np.int64)}')
+        # Extract the miller indices, and compute the rotation axis using 
+        # the miller indices as coefficients of the originab lattice basis vectors. 
+        a = final_axis.copy().astype(np.float64)
+        b = self.original_basis
+        uprime = a[0]*b[0,:] + a[1]*b[1,:] + a[2]*b[2,:]
+        uprime /= np.linalg.norm(uprime)
+        print(f"Rotation axis (x,y,z) = ({uprime[0]},{uprime[1]}, {uprime[2]})")
+
         u = final_axis.copy().astype(np.float64)
         u /= np.linalg.norm(u)
 
@@ -208,7 +229,8 @@ class Lattice:
         ax.set_xticks(ticks=[0.0, 1.0, -1.0], labels=['x=0', '1', '-1'])
         ax.set_yticks(ticks=[0.0, 1.0, -1.0], labels=['y=0', '1', '-1'])
         ax.set_zticks(ticks=[0.0, 1.0, -1.0], labels=['z=0', '1', '-1'])
-    
+        plt.show()
+
         fig.savefig(filename)
         plt.close()
 
@@ -220,52 +242,118 @@ class Lattice:
         for s, b in self.bases.items():
             print(f'lattice type {self.ltype} with sym. dir. {s}\n')
             points = self.new_lattice(s, reps)
+            sym_dir = self.string_to_sym_dir(s)
+            planar_spacing = self.calculate_interplanar_spacing(s) 
+
+            # Save an image of the lattice before we perform any other calculations on it 
             filename = figs_dir + f"base_lattice_{s}.png"
-            self.plot_lattice(points, filename)
+            #self.plot_lattice(points, filename)
+
             #print(points)
             # Select all atoms which lie in the plane z = 0, and sort these 
             # by distance to the origin.
             x = y = z = 0.0
             # Remove first element; this will be the origin itself.
-            z0_plane = self.select_atoms_by_plane(points, z)
-            z0_plane = self.sort_by_distance(np.unique(z0_plane, axis=0), x, y, z)
-            for p in z0_plane:
-                print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
-            print("\n")
+            z0_plane = self.sort_by_distance(np.unique(
+                self.select_atoms_by_plane(points, z), axis=0), x,y,z)
+            zplus_plane = self.sort_by_distance(np.unique(
+                self.select_atoms_by_plane(points, planar_spacing), axis=0), x,y,z)
+            zminus_plane = self.sort_by_distance(np.unique(
+                self.select_atoms_by_plane(points, -planar_spacing), axis=0), x,y,z)
+        
+            print(f'PLANE Z=0 shape = {z0_plane.shape}\n\n')
+            #for p in z0_plane:
+            #    print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
+            #print("\n")
+            print(f'PLANE Z=+d shape = {zplus_plane.shape}\n\n')
+            
+            #for p in zplus_plane:
+            #   print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
+            #print("\n")
+            
+            print(f'PLANE Z=-d shape = {zminus_plane.shape}')
+            #for p in zminus_plane:
+            #    print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
+            #print('\n')
+            
+            shortest_length_inplane = np.linalg.norm(z0_plane[1,:])
+            shortest_length_above = np.linalg.norm(zplus_plane[0,:])
+            shortest_length_below = np.linalg.norm(zminus_plane[0,:])
+
             #print(f'points in plane z = 0: {z0_plane}')
-            shortest_vector = z0_plane[1,:]
-            min_length = np.linalg.norm(shortest_vector)
-            # Select only those vectors which match the 
-            nn_vectors = self.return_vectors_by_length(z0_plane, min_length)
+            # shortest_inplane_vector = z0_plane[1,:]
+            # min_length = np.linalg.norm(shortest_vector)
+            
+            three_planes = np.row_stack((z0_plane[1:],
+                                         self.return_vectors_by_length(zplus_plane,
+                                                                       shortest_length_above),
+                                         self.return_vectors_by_length(zminus_plane,
+                                                                       shortest_length_below)))
+            # Select only those vectors which match the required length.
+            nn_vectors = np.row_stack((self.return_vectors_by_length(z0_plane,
+                                                                     shortest_length_inplane),
+                                       self.return_vectors_by_length(zplus_plane,
+                                                                     shortest_length_above),
+                                       self.return_vectors_by_length(zminus_plane,
+                                                                     shortest_length_below)))
             nn_count = nn_vectors.shape[0]
+
+            out_of_plane_neighbours = np.row_stack((self.return_vectors_by_length(zplus_plane,
+                                                                     shortest_length_above),
+                                       self.return_vectors_by_length(zminus_plane,
+                                                                     shortest_length_below)))
+            oo_nn_count = out_of_plane_neighbours.shape[0]
+            print(f"Located {oo_nn_count} neighbours out of the plane.")
+            in_plane_neighbours = self.return_vectors_by_length(z0_plane, shortest_length_inplane)
+            ip_nn_count = in_plane_neighbours.shape[0]
+            print(f"Located {ip_nn_count} neighbours in the plane")
+
+            neighbours = (in_plane_neighbours, out_of_plane_neighbours)
+            
             if plot_image:
                 filename = figs_dir + f"nn_plot_{s}.png"
-                self.plot_lattice(z0_plane, filename, vectors=nn_vectors)
+                self.plot_lattice(three_planes, filename, vectors=nn_vectors)
 
             #print(f"Got {nn_count} nearest neighbours for lattice type {self.ltype} in symmetry direction {s}\n with distance {min_length} from origin.")
-            nn.update({s: nn_vectors})
+            nn.update({s: neighbours})
         
         return nn
     
+    def print_vector(self, vector, use_colour=False):
+        if use_colour:
+            print_r_text(f"(x,y,z) = ({vector[0]:.4f}, {vector[1]:.4f}, {vector[2]:.4f})\n")
+        else:
+            print(f"(x,y,z) = ({vector[0]:.4f}, {vector[1]:.4f}, {vector[2]:.4f})\n")
+    
+
     # For every nn_vector v_i, we have v_i = M (n1, n2, n3)^T, 
     # where n1, n2 and n3 are integer coefficients of the basis vectors, 
     # and M = (a1, a2, a3). This function allows us to find the nearest neighbour 
     # vectors in the original un-rotated basis.
     def nearest_neighbours_original_basis(self, sym_dir, vector):
+        #print(f"Computing integer coefficients of nearest neighbours for lattice {self.ltype} with symmetry direction {sym_dir}")
         basis = self.original_basis 
-        a1 = basis[0,:].reshape((3,1))
-        a2 = basis[1,:].reshape((3,1))
-        a3 = basis[2,:].reshape((3,1))
+        a1 = basis[0,:]#.reshape((3,1))
+        a2 = basis[1,:]#.reshape((3,1))
+        a3 = basis[2,:]#.reshape((3,1))
 
-        M = np.column_stack((a1,a2,a3))
+        A = np.column_stack((a1,a2,a3))
+        #print(A)
         R = self.rot_matrix(self.string_to_sym_dir(sym_dir), inverse=True)
-        #print(M.shape)
-        #print(vector.shape)
-        m = np.linalg.inv(M)
-        
+        print(f'R shape = {R.shape}')
+
+        A_inv = np.linalg.inv(A)
+        print("Matrix to compute basis coefficients is: \n")
+        print(A_inv)
+        #print("Vector to be rotated:\n")
+        self.print_vector(vector)
+        #print("Rotation of vector:\n")
+        self.print_vector(R @ vector, True)
+        rot_vector = R @ vector
+        print(f'rotated vector shape = {rot_vector.shape}')
         # first return the vector to the original basis, then compute it 
         # in terms of integer coefficients of the original basis vectors.
-        v =  m @ (R @ vector) 
-        return v.astype(np.int64) 
+        v =  A_inv @ rot_vector 
+        return v.astype(np.int64)
 
 
