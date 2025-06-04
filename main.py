@@ -23,7 +23,8 @@ for lattice_type in lattice_types:
     p = lat.Params(params)
     lattice = lat.Lattice(lattice_type, p)
     
-    # repeat the lattice three times along each basis vector.
+    # Compute the nearest neighbours for all defined symmetry directions.
+    print("Computing nns in all bases")
     nearest_neighbours = lattice.in_plane_nearest_neighbours(3, plot_image=True, prefix=prefix)
     
     for s, nns in nearest_neighbours.items():
@@ -33,41 +34,58 @@ for lattice_type in lattice_types:
         os.makedirs(data_dir, exist_ok=True)
         filename = data_dir + "nn_ip.dat"
         
-        (in_plane, out_of_plane) = nns
-        print(f"{in_plane.shape[0]}, {out_of_plane.shape[0]}")
+        (in_plane, plane_above, plane_below) = nns
+        #print(f"{in_plane.shape[0]}, {out_of_plane.shape[0]}")
         #print(type(in_plane))
         #print(type(out_of_plane))
         
-        print("Computing in-plane nearest neighbours in original basis.\n")
+        # print("Computing in-plane nearest neighbours in original basis.\n")
         with open(filename, "w") as f:
             f.write('idx    n1    n2    n3\n')
            
             for i, nn in enumerate(in_plane):
-                print(f"nn shape: {nn.shape}")
-                coeffs = lattice.nearest_neighbours_original_basis(s, nn)
+                #print(f"nn shape: {nn.shape}")
+                coeffs = lattice.nearest_neighbours_original_basis(s, nn, "Z=0")
                 
                 #print("Has Bravais lattice coefficients (in conventional basis):\n")
-                lattice.print_vector(coeffs, True)
+                #lattice.print_vector(coeffs, True)
 
                 f.write(f'{i}    {coeffs[0]}    {coeffs[1]}    {coeffs[2]}\n')
 
             f.close()
 
-        filename = data_dir + "nn_oop.dat"
+        filename = data_dir + "nn_oop_above.dat"
         
-        print("Computing out-of-plane nearest neighbours in original basis\n")
+        #print("Computing nearest neighbours in plane above in original basis\n")
         with open(filename, "w") as f:
             f.write('idx    n1    n2    n3\n')
 
-            for i, nn in enumerate(out_of_plane):
-                coeffs = lattice.nearest_neighbours_original_basis(s, nn)
-                print("Has Bravais lattice coefficients (in conventional basis):\n")
-                lattice.print_vector(coeffs, True)
+            for i, nn in enumerate(plane_above):
+                coeffs = lattice.nearest_neighbours_original_basis(s, nn, "Z=+d")
+                #print("Has Bravais lattice coefficients (in conventional basis):\n")
+                #lattice.print_vector(coeffs, True)
                 #print(f"int of -1 is {int(-1.0)}")
 
                 f.write(f'{i}    {coeffs[0]}    {coeffs[1]}    {coeffs[2]}\n')
 
             f.close()
+
+        filename = data_dir + "nn_oop_below.dat"
+        
+        #print("Computing nearest neighbours in plane below in original basis\n")
+        with open(filename, "w") as f:
+            f.write('idx    n1    n2    n3\n')
+
+            for i, nn in enumerate(plane_below):
+                coeffs = lattice.nearest_neighbours_original_basis(s, nn, "Z=-d")
+                #print("Has Bravais lattice coefficients (in conventional basis):\n")
+                #lattice.print_vector(coeffs, True)
+                #print(f"int of -1 is {int(-1.0)}")
+
+                f.write(f'{i}    {coeffs[0]}    {coeffs[1]}    {coeffs[2]}\n')
+
+            f.close()
+#
 #
 #        test_1 = np.array([0, 0.5, 0.5])
 #        test_2 = np.array([0, -0.5, -0.5])

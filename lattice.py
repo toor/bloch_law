@@ -97,10 +97,13 @@ class Lattice:
 
         bases = {}
         for i, sym_dir in enumerate(basis.sym_dirs):
-            print(sym_dir)
+            #print(sym_dir)
             rotated_basis = self.rotate_vectors(basis.basis, sym_dir)
             dict_i = {self.sym_dir_to_string(sym_dir): rotated_basis}
             bases.update(dict_i)
+        # Store the original basis.
+        ob_dict = {"NULL": basis.basis}
+        bases.update(ob_dict)
 
         self.bases = bases
         self.ltype = lattice_type
@@ -153,6 +156,9 @@ class Lattice:
 
     # Note to self: retur
     def calculate_interplanar_spacing(self, s):
+        if s == "NULL":
+            # TODO: This only works for the cubic case. 
+            return self.params.a
         chars = [c for c in s]
         h = int(chars[0])
         k = int(chars[1])
@@ -185,7 +191,7 @@ class Lattice:
         b = self.original_basis
         uprime = a[0]*b[0,:] + a[1]*b[1,:] + a[2]*b[2,:]
         uprime /= np.linalg.norm(uprime)
-        print(f"Rotation axis (x,y,z) = ({uprime[0]},{uprime[1]}, {uprime[2]})")
+        #print(f"Rotation axis (x,y,z) = ({uprime[0]},{uprime[1]}, {uprime[2]})")
 
         u = final_axis.copy().astype(np.float64)
         u /= np.linalg.norm(u)
@@ -233,6 +239,45 @@ class Lattice:
 
         fig.savefig(filename)
         plt.close()
+    
+    def build_plane_index_map(self, points, tol=ATOL):
+        zs = points[:, 2]
+        sorted_inds = np.argsort(zs)
+        sorted_zs = zs[sorted_inds]
+
+        # 2) Cluster sorted_zs into distinct “planes”: start with the first z‐value
+        clusters = [[sorted_zs[0]]]
+        for z_val in sorted_zs[1:]:
+            if abs(z_val - clusters[-1][-1]) <= tol:
+                # z_val belongs to the same cluster as the last entry
+                clusters[-1].append(z_val)
+            else:
+                # z_val starts a new cluster
+                clusters.append([z_val])
+
+        # 3) For each cluster, pick the mean as the representative z
+        unique_z = np.array([np.mean(cluster) for cluster in clusters])
+
+        # 4) Assign each original point to the nearest unique_z index
+        raw_idx = np.empty(len(points), dtype=int)
+        for j, z_val in enumerate(zs):
+            diffs = np.abs(unique_z - z_val)
+            i_min = np.argmin(diffs)
+            if diffs[i_min] < tol:
+                raw_idx[j] = i_min
+            else:
+                # Should never happen if tol is large enough to group co‐planar atoms
+                raise ValueError(f"Point z={z_val} did not match any unique_z within tol={tol}.")
+
+        # 5) Find which unique_z is closest to z = 0 (the “origin plane”)
+        origin_i = int(np.argmin(np.abs(unique_z)))
+
+        return unique_z, raw_idx, origin_i
+    
+    # Return all points with a given plane_idx 
+    def select_atoms_by_plane_idx(self, points, plane_idx, target_n):
+        mask = (plane_idx == target_n)
+        return points[mask]
 
     def in_plane_nearest_neighbours(self, reps, plot_image=False, prefix=None):
         if prefix is not None:
@@ -242,36 +287,47 @@ class Lattice:
         for s, b in self.bases.items():
             print(f'lattice type {self.ltype} with sym. dir. {s}\n')
             points = self.new_lattice(s, reps)
-            sym_dir = self.string_to_sym_dir(s)
+            #print(type(points))
+            unique_z, plane_idx, origin_plane = self.build_plane_index_map(points)
+            
+            if s == "NULL":
+                sym_dir = "NULL"
+            else:
+                sym_dir = self.string_to_sym_dir(s)
             planar_spacing = self.calculate_interplanar_spacing(s) 
 
             # Save an image of the lattice before we perform any other calculations on it 
             filename = figs_dir + f"base_lattice_{s}.png"
             #self.plot_lattice(points, filename)
-
-            #print(points)
-            # Select all atoms which lie in the plane z = 0, and sort these 
-            # by distance to the origin.
+            
             x = y = z = 0.0
-            # Remove first element; this will be the origin itself.
-            z0_plane = self.sort_by_distance(np.unique(
-                self.select_atoms_by_plane(points, z), axis=0), x,y,z)
-            zplus_plane = self.sort_by_distance(np.unique(
-                self.select_atoms_by_plane(points, planar_spacing), axis=0), x,y,z)
-            zminus_plane = self.sort_by_distance(np.unique(
-                self.select_atoms_by_plane(points, -planar_spacing), axis=0), x,y,z)
-        
-            print(f'PLANE Z=0 shape = {z0_plane.shape}\n\n')
+            first_above = origin_plane + 1
+            first_below = origin_plane - 1
+            #print(f"Origin plane located at {unique_z[origin_plane]}, with planes above and below at {unique_z[first_above]} and {unique_z[first_below]}")
+
+            z0_plane = self.sort_by_distance(
+                np.unique(self.select_atoms_by_plane_idx(points, plane_idx, origin_plane), axis=0),
+                    x, y, z)
+
+            zplus_plane = self.sort_by_distance(
+                np.unique(self.select_atoms_by_plane_idx(points, plane_idx, first_above), axis=0),
+                    x, y, z)
+
+            zminus_plane = self.sort_by_distance(
+                np.unique(self.select_atoms_by_plane_idx(points, plane_idx, first_below), axis=0),
+                    x, y, z)
+
+            #print(f'PLANE Z=0 shape = {z0_plane.shape}\n\n')
             #for p in z0_plane:
             #    print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
             #print("\n")
-            print(f'PLANE Z=+d shape = {zplus_plane.shape}\n\n')
+            #print(f'PLANE Z=+d shape = {zplus_plane.shape}\n\n')
             
             #for p in zplus_plane:
             #   print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
             #print("\n")
             
-            print(f'PLANE Z=-d shape = {zminus_plane.shape}')
+            #print(f'PLANE Z=-d shape = {zminus_plane.shape}')
             #for p in zminus_plane:
             #    print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
             #print('\n')
@@ -283,32 +339,35 @@ class Lattice:
             #print(f'points in plane z = 0: {z0_plane}')
             # shortest_inplane_vector = z0_plane[1,:]
             # min_length = np.linalg.norm(shortest_vector)
-            
-            three_planes = np.row_stack((z0_plane[1:],
+           # 
+            three_planes = np.row_stack((z0_plane,
                                          self.return_vectors_by_length(zplus_plane,
                                                                        shortest_length_above),
                                          self.return_vectors_by_length(zminus_plane,
                                                                        shortest_length_below)))
-            # Select only those vectors which match the required length.
+           # # Select only those vectors which match the required length.
             nn_vectors = np.row_stack((self.return_vectors_by_length(z0_plane,
                                                                      shortest_length_inplane),
                                        self.return_vectors_by_length(zplus_plane,
                                                                      shortest_length_above),
                                        self.return_vectors_by_length(zminus_plane,
                                                                      shortest_length_below)))
-            nn_count = nn_vectors.shape[0]
-
-            out_of_plane_neighbours = np.row_stack((self.return_vectors_by_length(zplus_plane,
-                                                                     shortest_length_above),
-                                       self.return_vectors_by_length(zminus_plane,
-                                                                     shortest_length_below)))
-            oo_nn_count = out_of_plane_neighbours.shape[0]
-            print(f"Located {oo_nn_count} neighbours out of the plane.")
+           # nn_count = nn_vectors.shape[0]
+            
+            neighbours_above = self.return_vectors_by_length(zplus_plane, shortest_length_above)
+            neighbours_below = self.return_vectors_by_length(zminus_plane, shortest_length_below)
+            #oo_nn_count = out_of_plane_neighbours.shape[0]
+            #print(f"Located {oo_nn_count} neighbours out of the plane.")
             in_plane_neighbours = self.return_vectors_by_length(z0_plane, shortest_length_inplane)
-            ip_nn_count = in_plane_neighbours.shape[0]
-            print(f"Located {ip_nn_count} neighbours in the plane")
+            ip_count = in_plane_neighbours.shape[0]
+            pa_count = neighbours_above.shape[0]
+            pb_count = neighbours_below.shape[0]
 
-            neighbours = (in_plane_neighbours, out_of_plane_neighbours)
+            #print(f"Located {ip_nn_count} neighbours in the plane")
+            print(f"Located {ip_count} in-plane neighbours; {pa_count} above and {pb_count} below") 
+            # Store the neighbours in the plane above and plane below separately;
+            # their plane indices are important.
+            neighbours = (in_plane_neighbours, neighbours_above, neighbours_below)
             
             if plot_image:
                 filename = figs_dir + f"nn_plot_{s}.png"
@@ -331,8 +390,8 @@ class Lattice:
     # where n1, n2 and n3 are integer coefficients of the basis vectors, 
     # and M = (a1, a2, a3). This function allows us to find the nearest neighbour 
     # vectors in the original un-rotated basis.
-    def nearest_neighbours_original_basis(self, sym_dir, vector):
-        #print(f"Computing integer coefficients of nearest neighbours for lattice {self.ltype} with symmetry direction {sym_dir}")
+    def nearest_neighbours_original_basis(self, sym_dir, vector, plane):
+        #print(f"Computing Bravais coefficients for lattice {self.ltype} with symmetry direction {sym_dir} in plane {plane}")
         basis = self.original_basis 
         a1 = basis[0,:].reshape((3,))
         a2 = basis[1,:].reshape((3,))
@@ -340,7 +399,10 @@ class Lattice:
 
         A = np.column_stack((a1,a2,a3))
         #print(A)
-        R = self.rot_matrix(self.string_to_sym_dir(sym_dir), inverse=True)
+        if sym_dir == "NULL":
+            R = np.eye(3)
+        else:
+            R = self.rot_matrix(self.string_to_sym_dir(sym_dir), inverse=True)
         #print(f'R shape = {R.shape}')
 
         A_inv = np.linalg.inv(A)
