@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import pickle
 
 ATOL = 1e-6
 np.set_printoptions(threshold=np.inf)
@@ -110,6 +111,7 @@ class Lattice:
     
     def new_lattice(self, sym_dir, reps):
         basis = self.bases[sym_dir]
+        #print(f"New basis for {sym_dir} is {basis}")
         a1 = basis[0,:]
         a2 = basis[1,:]
         a3 = basis[2,:]
@@ -222,7 +224,7 @@ class Lattice:
         ax = fig.add_subplot(111, projection='3d')
         
         # Draw the lattice
-        ax.scatter(points[:,0], points[:,1], points[:,2], c='gold', s=10)
+        ax.scatter(points[:,0], points[:,1], points[:,2], c='xkcd:rust', s=10)
         ax.set_xlim(np.min(points[:,0]), np.max(points[:,0]))
         ax.set_ylim(np.min(points[:,1]), np.max(points[:,1]))
         #ax.set_zlim(np.min(points[:,2]), np.max(points[:,2]))
@@ -238,7 +240,7 @@ class Lattice:
         #plt.show()
 
         fig.savefig(filename)
-        plt.close()
+        return fig 
     
     def build_plane_index_map(self, points, tol=ATOL):
         zs = points[:, 2]
@@ -285,25 +287,24 @@ class Lattice:
             os.makedirs(figs_dir, exist_ok=True)
         nn = {}
         for s, b in self.bases.items():
-            print(f'lattice type {self.ltype} with sym. dir. {s}\n')
+            print(f'lattice type {self.ltype} with sym. dir. {s}')
             points = self.new_lattice(s, reps)
             #print(type(points))
             unique_z, plane_idx, origin_plane = self.build_plane_index_map(points)
-            
+            print(f"{unique_z.shape[0]} planes found with spacing {unique_z[origin_plane + 1] - unique_z[origin_plane]:.2f}")
+
             if s == "NULL":
-                sym_dir = "NULL"
+                sym_dir = s
             else:
                 sym_dir = self.string_to_sym_dir(s)
             planar_spacing = self.calculate_interplanar_spacing(s) 
 
             # Save an image of the lattice before we perform any other calculations on it 
             filename = figs_dir + f"base_lattice_{s}.png"
-            #self.plot_lattice(points, filename)
-            
+
             x = y = z = 0.0
             first_above = origin_plane + 1
             first_below = origin_plane - 1
-            #print(f"Origin plane located at {unique_z[origin_plane]}, with planes above and below at {unique_z[first_above]} and {unique_z[first_below]}")
 
             z0_plane = self.sort_by_distance(
                 np.unique(self.select_atoms_by_plane_idx(points, plane_idx, origin_plane), axis=0),
@@ -316,21 +317,6 @@ class Lattice:
             zminus_plane = self.sort_by_distance(
                 np.unique(self.select_atoms_by_plane_idx(points, plane_idx, first_below), axis=0),
                     x, y, z)
-
-            #print(f'PLANE Z=0 shape = {z0_plane.shape}\n\n')
-            #for p in z0_plane:
-            #    print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
-            #print("\n")
-            #print(f'PLANE Z=+d shape = {zplus_plane.shape}\n\n')
-            
-            #for p in zplus_plane:
-            #   print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
-            #print("\n")
-            
-            #print(f'PLANE Z=-d shape = {zminus_plane.shape}')
-            #for p in zminus_plane:
-            #    print(f"({p[0]:.4f}, {p[1]:.4f}, {p[2]:.4f}); r={np.linalg.norm(p):.4f}")
-            #print('\n')
             
             shortest_length_inplane = np.linalg.norm(z0_plane[1,:])
             shortest_length_above = np.linalg.norm(zplus_plane[0,:])
@@ -365,15 +351,19 @@ class Lattice:
 
             #print(f"Located {ip_nn_count} neighbours in the plane")
             print(f"Located {ip_count} in-plane neighbours; {pa_count} above and {pb_count} below") 
+            print(f"Total nns: {ip_count + pa_count + pb_count}")
             # Store the neighbours in the plane above and plane below separately;
             # their plane indices are important.
             neighbours = (in_plane_neighbours, neighbours_above, neighbours_below)
             
             if plot_image:
                 filename = figs_dir + f"nn_plot_{s}.png"
-                self.plot_lattice(three_planes, filename, vectors=nn_vectors)
+                fig = self.plot_lattice(three_planes, filename, vectors=nn_vectors)
+                pickle_filename = figs_dir + f"nn_plot_{s}.fig.pickle"
+                with open(pickle_filename, 'wb') as f:
+                    pickle.dump(fig, f)
+                plt.close(fig)
 
-            #print(f"Got {nn_count} nearest neighbours for lattice type {self.ltype} in symmetry direction {s}\n with distance {min_length} from origin.")
             nn.update({s: neighbours})
         
         return nn
@@ -419,5 +409,3 @@ class Lattice:
         v =  A_inv @ rot_vector 
         #self.print_vector(v)
         return self.as_integer_tuple(v)
-
-
