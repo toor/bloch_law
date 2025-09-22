@@ -27,3 +27,44 @@ class Basis:
             case "cF":
                 self.basis = a*half*Matrix([[0,1,1],[1,0,1],[1,1,0]])
                 self.sym_dir = ["100", "010", "110", "111"]
+
+nn_indices_dict = {
+    "cP": {
+        "010": {
+            "inplane": np.array([[-1,0,0],[0,0,1],[0,0,-1],[1,0,0]]),
+            "above": np.array([[0,1,0]]),
+            "below": np.array([0,-1,0])
+        },
+        "100": {
+            "inplane": np.array([[0,0,1],[0,-1,0],[0,1,0],[0,0,-1]]),
+            "above": np.array([[1,0,0]]),
+            "below": np.array([[-1,0,0]])
+        },
+        "110": {
+            "inplane": np.array([[0,0,1],[0,0,-1]]),
+            "above": np.array([[0,1,0],[1,0,0]]),
+            "below": np.array([[-1,0,0],[0,-1,0]])
+        },
+        "111": {
+            "inplane": None,
+            "above": np.array([[0,0,1],[0,1,0],[1,0,0]]),
+            "below": np.array([[-1,0,0],[0,-1,0],[0,0,-1]])
+        },
+        "001": {
+            "inplane": np.array([[-1,0,0],[0,-1,0],[0,1,0],[1,0,0]]),
+            "above": np.array([[0,0,1]]),
+            "below": np.array([[0,0,-1]])
+        }
+    },
+    "cI": {
+        "010": {
+            "inplane": None,
+            "above": np.array([])
+        },
+        "110": {
+            "inplane": None,
+            "above": np.array([[0,0,-1],[1,0,0],[0,1,0],[1,1,1]]),
+            "below": np.array([[-1,-1,-1],[0,-1,0],[-1,0,0],[0,0,1]])
+        }
+    }
+}

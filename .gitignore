@@ -3,3 +3,4 @@ test.py
 nn_*/
 .DS_Store 
 __pycache__/
+*.tex

@@ -187,22 +187,16 @@ class Lattice:
         return np.array(new_vectors)
     
     def rot_matrix(self, final_axis, inverse=False):
-        # Extract the miller indices, and compute the rotation axis using 
-        # the miller indices as coefficients of the originab lattice basis vectors. 
-        a = final_axis.copy().astype(np.float64)
-        b = self.original_basis
-        uprime = a[0]*b[0,:] + a[1]*b[1,:] + a[2]*b[2,:]
-        uprime /= np.linalg.norm(uprime)
-        #print(f"Rotation axis (x,y,z) = ({uprime[0]},{uprime[1]}, {uprime[2]})")
-
         u = final_axis.copy().astype(np.float64)
         u /= np.linalg.norm(u)
 
         v = np.array([0,0,1])
 
+        if np.all(np.isclose(v, u)):
+            # This shouldn't happen, but if it does, return the identity
+            return np.eye(3)        
         # Compute angle of rotation
-        dot_prod = np.dot(u, v)
-        theta = np.arccos(dot_prod)
+        theta = np.arccos(np.dot(u,v))
        
         # Compute axis of rotation
         r = np.cross(u, v)
@@ -294,11 +288,11 @@ class Lattice:
             print(f"{unique_z.shape[0]} planes found with spacing {unique_z[origin_plane + 1] - unique_z[origin_plane]:.2f}")
 
             if s == "NULL":
-                sym_dir = s
+                sym_dir = np.array([0,0,1])
             else:
                 sym_dir = self.string_to_sym_dir(s)
             planar_spacing = self.calculate_interplanar_spacing(s) 
-
+    
             # Save an image of the lattice before we perform any other calculations on it 
             filename = figs_dir + f"base_lattice_{s}.png"
 
@@ -376,6 +370,9 @@ class Lattice:
     def as_integer_tuple(self, vector):
         return np.array([int(round(vector[0])), int(round(vector[1])), int(round(vector[2]))])
 
+    def project_vector(self, vector, axis):
+        vector = vector - (np.dot(vector,axis))*axis
+
     # For every nn_vector v_i, we have v_i = M (n1, n2, n3)^T, 
     # where n1, n2 and n3 are integer coefficients of the basis vectors, 
     # and M = (a1, a2, a3). This function allows us to find the nearest neighbour 
@@ -386,6 +383,12 @@ class Lattice:
         a1 = basis[0,:].reshape((3,))
         a2 = basis[1,:].reshape((3,))
         a3 = basis[2,:].reshape((3,))
+        
+        if sym_dir == "NULL":
+            sym = np.array([0,0,1])
+        else:
+            sym = self.string_to_sym_dir(sym_dir)
+            sym /= np.linalg.norm(sym)       
 
         A = np.column_stack((a1,a2,a3))
         #print(A)
@@ -401,7 +404,13 @@ class Lattice:
         #print("Vector to be rotated:\n")
         #self.print_vector(vector)
         #print("Rotation of vector:\n")
+        z_axis = np.array([0,0,1])
         rot_vector = R @ vector
+        proj = vector - (np.dot(vector, z_axis)) * z_axis
+        print(f"Vector:\n")
+        self.print_vector(vector, True)
+        print(f"projection onto {sym_dir} plane yields:\n")
+        self.print_vector(proj, True)
         #self.print_vector(rot_vector)
         #print(f'rotated vector shape = {rot_vector.shape}')
         # first return the vector to the original basis, then compute it 
