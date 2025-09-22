@@ -4,3 +4,8 @@ nn_*/
 .DS_Store 
 __pycache__/
 *.tex
+figures/*
+sc_nns/*
+fcc_nns/*
+bcc_nns/*
+*.ipynb
